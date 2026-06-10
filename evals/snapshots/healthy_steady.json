@@ -1,0 +1,18 @@
+{
+  "headline": "Review coverage (% of merged PRs with ≥1 human review) is 93% (flat vs. baseline)",
+  "statement": "The level in this signal most plausibly reflects a change in how the team is handling reviews during this window.",
+  "evidence": [
+    {
+      "factId": "review_coverage",
+      "display": "93%",
+      "isAnomaly": false
+    }
+  ],
+  "confidence": {
+    "overall": 0.56,
+    "statistical": 0.8,
+    "reasoning": 0.4,
+    "method": "overall = statistical × (0.5 + 0.5 × reasoning). Statistical confidence is derived in code from the sample size and reliability of the cited facts; reasoning confidence is the model's own. Overall is capped by statistical, so the narrative cannot sound more certain than the data supports."
+  },
+  "band": "healthy"
+}
