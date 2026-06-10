@@ -69,6 +69,11 @@ export function computeWindowMetrics(activity: RepoActivity): WindowMetrics {
     .filter((v): v is number => v !== null);
   const medianTimeToFirstReviewHours = median(ttfrValues);
 
+  const ttmValues = mergedPrs
+    .map((pr) => (Date.parse(pr.mergedAt!) - Date.parse(pr.createdAt)) / 3_600_000)
+    .filter((h) => h >= 0);
+  const medianTimeToMergeHours = median(ttmValues);
+
   // Reviewer load distribution across every human review in the cohort.
   const reviewsByAuthor = new Map<string, number>();
   for (const pr of cohort) {
@@ -96,6 +101,7 @@ export function computeWindowMetrics(activity: RepoActivity): WindowMetrics {
     reviewCoverage,
     rubberStampRate,
     medianTimeToFirstReviewHours,
+    medianTimeToMergeHours,
     reviewerTop1Share,
     reviewerGini,
     totalHumanReviews,

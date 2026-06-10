@@ -103,6 +103,18 @@ describe("computeWindowMetrics", () => {
     expect(m.reviewerGini).toBeCloseTo(0.25, 5);
   });
 
+  it("computes median time to merge over the merged cohort", () => {
+    const prs: PullRequest[] = [
+      pr({ author: "owner", mergedAt: at(2 * HOUR) }), // 2h
+      pr({ author: "owner", mergedAt: at(6 * HOUR) }), // 6h
+      pr({ author: "owner", mergedAt: at(10 * HOUR) }), // 10h
+      pr({ author: "owner" }), // open — excluded
+    ];
+    const m = computeWindowMetrics(activity(prs));
+    expect(m.prsMerged).toBe(3);
+    expect(m.medianTimeToMergeHours).toBeCloseTo(6, 5); // median of [2,6,10]
+  });
+
   it("aggregates commit lines changed", () => {
     const commits: Commit[] = [
       { oid: "a", author: "x", committedDate: at(0), additions: 10, deletions: 2 },

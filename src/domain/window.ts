@@ -31,6 +31,24 @@ export function assertWithinLimit(window: Window, maxDays: number): void {
 }
 
 /**
+ * Splits a window into `buckets` equal, contiguous sub-windows in chronological
+ * order. Used by the trend endpoint to produce a per-signal time series. The last
+ * bucket absorbs any rounding remainder so the series exactly covers [since, until).
+ */
+export function splitWindow(window: Window, buckets: number): Window[] {
+  const sinceMs = Date.parse(window.since);
+  const untilMs = Date.parse(window.until);
+  const step = Math.floor((untilMs - sinceMs) / buckets);
+  const out: Window[] = [];
+  for (let i = 0; i < buckets; i++) {
+    const start = sinceMs + i * step;
+    const end = i === buckets - 1 ? untilMs : sinceMs + (i + 1) * step;
+    out.push({ since: new Date(start).toISOString(), until: new Date(end).toISOString() });
+  }
+  return out;
+}
+
+/**
  * Generates `count` equal-length windows immediately preceding the given window.
  * These form the baseline used to compute trends and statistical anomalies — the
  * "is this number unusual for this repo?" signal feeding the confidence score.

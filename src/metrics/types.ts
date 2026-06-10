@@ -47,6 +47,7 @@ export interface WindowMetrics {
   reviewCoverage: number; // 0..1
   rubberStampRate: number; // 0..1
   medianTimeToFirstReviewHours: number | null;
+  medianTimeToMergeHours: number | null;
   reviewerTop1Share: number; // 0..1
   reviewerGini: number; // 0..1
   totalHumanReviews: number;

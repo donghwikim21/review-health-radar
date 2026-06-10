@@ -63,6 +63,16 @@ const SPECS: MetricSpec[] = [
     display: hrs,
   },
   {
+    id: "time_to_merge_median",
+    label: "Median time to merge",
+    unit: "hours",
+    value: (m) => m.medianTimeToMergeHours ?? 0,
+    sampleSize: (m) => m.prsMerged,
+    minSample: 3,
+    defined: (m) => m.medianTimeToMergeHours !== null,
+    display: hrs,
+  },
+  {
     id: "reviewer_top1_share",
     label: "Top reviewer's share of all reviews",
     unit: "percent",
@@ -143,6 +153,9 @@ function classifyBand(
   if (reliable.time_to_first_review_median && m.medianTimeToFirstReviewHours !== null) {
     if (m.medianTimeToFirstReviewHours > 72) escalate("at-risk", `Median time to first review is ${round(m.medianTimeToFirstReviewHours, 1)}h (>72h).`);
     else if (m.medianTimeToFirstReviewHours > 24) escalate("watch", `Median time to first review is ${round(m.medianTimeToFirstReviewHours, 1)}h (>24h).`);
+  }
+  if (reliable.time_to_merge_median && m.medianTimeToMergeHours !== null && m.medianTimeToMergeHours > 168) {
+    escalate("watch", `Median time to merge is ${round(m.medianTimeToMergeHours / 24, 1)} days (>7d).`);
   }
   if (reliable.reviewer_top1_share) {
     if (m.reviewerTop1Share > 0.7) escalate("at-risk", `One reviewer handled ${round(m.reviewerTop1Share * 100, 1)}% of all reviews (>70%) — bus-factor risk.`);

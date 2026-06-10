@@ -1,6 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import { config } from "../config.js";
-import { getReviewHealthReport } from "../service/review-health-service.js";
+import {
+  DEFAULT_TREND_BUCKETS,
+  getReviewHealthReport,
+  getReviewHealthTrend,
+} from "../service/review-health-service.js";
 import { generateNarrative } from "../insight/narrative.js";
 import { getInsightProvider } from "../insight/factory.js";
 import { parseRepoParams, parseWindowQuery } from "./validation.js";
@@ -20,6 +24,18 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
     });
     reply.header("Cache-Control", `public, max-age=${config.cacheTtlSeconds}`);
     return report;
+  });
+
+  /**
+   * Trend — the component signals as a time series over `buckets` sub-windows,
+   * for sparklines / "trend lines over time". Cacheable like the metrics endpoint.
+   */
+  app.get("/repos/:owner/:repo/review-health/trend", async (request, reply) => {
+    const repo = parseRepoParams(request.params);
+    const { window, buckets } = parseWindowQuery(request.query);
+    const trend = await getReviewHealthTrend(repo, window, buckets ?? DEFAULT_TREND_BUCKETS, request.log);
+    reply.header("Cache-Control", `public, max-age=${config.cacheTtlSeconds}`);
+    return trend;
   });
 
   /**

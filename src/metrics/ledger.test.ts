@@ -18,6 +18,7 @@ function metrics(overrides: Partial<WindowMetrics> = {}): WindowMetrics {
     reviewCoverage: 0.95,
     rubberStampRate: 0.05,
     medianTimeToFirstReviewHours: 4,
+    medianTimeToMergeHours: 24,
     reviewerTop1Share: 0.3,
     reviewerGini: 0.2,
     totalHumanReviews: 40,

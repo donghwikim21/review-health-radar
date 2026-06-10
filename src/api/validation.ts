@@ -20,6 +20,7 @@ const WindowQuerySchema = z.object({
   since: z.string().min(1, "since is required (YYYY-MM-DD or ISO-8601)"),
   until: z.string().min(1, "until is required (YYYY-MM-DD or ISO-8601)"),
   baseline: z.coerce.number().int().min(0).max(6).optional(),
+  buckets: z.coerce.number().int().min(2).max(12).optional(),
 });
 
 function fail(error: z.ZodError): never {
@@ -33,10 +34,14 @@ export function parseRepoParams(params: unknown): RepoRef {
   return { owner: parsed.data.owner, name: parsed.data.repo };
 }
 
-export function parseWindowQuery(query: unknown): { window: Window; baseline: number | undefined } {
+export function parseWindowQuery(query: unknown): {
+  window: Window;
+  baseline: number | undefined;
+  buckets: number | undefined;
+} {
   const parsed = WindowQuerySchema.safeParse(query);
   if (!parsed.success) fail(parsed.error);
   const window = parseWindow(parsed.data.since, parsed.data.until);
   assertWithinLimit(window, config.maxWindowDays);
-  return { window, baseline: parsed.data.baseline };
+  return { window, baseline: parsed.data.baseline, buckets: parsed.data.buckets };
 }
