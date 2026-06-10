@@ -2,6 +2,8 @@ import type { FastifyInstance } from "fastify";
 import { config } from "../config.js";
 import {
   DEFAULT_TREND_BUCKETS,
+  getContributors,
+  getRecap,
   getReviewHealthReport,
   getReviewHealthTrend,
 } from "../service/review-health-service.js";
@@ -36,6 +38,30 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
     const trend = await getReviewHealthTrend(repo, window, buckets ?? DEFAULT_TREND_BUCKETS, request.log);
     reply.header("Cache-Control", `public, max-age=${config.cacheTtlSeconds}`);
     return trend;
+  });
+
+  /**
+   * Contributor character sheets + behaviour badges (gamification). Deterministic,
+   * cacheable. Multidimensional by design — no single rankable score.
+   */
+  app.get("/repos/:owner/:repo/contributors", async (request, reply) => {
+    const repo = parseRepoParams(request.params);
+    const { window } = parseWindowQuery(request.query);
+    const result = await getContributors(repo, window, request.log);
+    reply.header("Cache-Control", `public, max-age=${config.cacheTtlSeconds}`);
+    return result;
+  });
+
+  /**
+   * "Repo Wrapped" — a grounded, playful season recap. POST (billable LLM call).
+   */
+  app.post("/repos/:owner/:repo/recap", async (request, reply) => {
+    const repo = parseRepoParams(request.params);
+    const { window } = parseWindowQuery(request.query);
+    const provider = getInsightProvider(); // 503 if no API key configured
+    const result = await getRecap(repo, window, provider, request.log);
+    reply.header("Cache-Control", "no-store");
+    return result;
   });
 
   /**

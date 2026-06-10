@@ -4,9 +4,16 @@ import { fetchRepoActivity } from "../github/fetch.js";
 import { getCachedActivity, putCachedActivity } from "../store/repository.js";
 import { computeWindowMetrics } from "../metrics/review-health.js";
 import { buildReport } from "../metrics/ledger.js";
+import { computeContributors } from "../metrics/contributors.js";
+import { buildCharacterSheets } from "../metrics/character-sheet.js";
+import { buildRecapFacts } from "../insight/recap-facts.js";
+import { generateRecap } from "../insight/recap.js";
 import { precedingWindows, splitWindow } from "../domain/window.js";
 import type { RepoActivity, RepoRef, Window } from "../domain/types.js";
 import type { ReviewHealthReport } from "../metrics/types.js";
+import type { ContributorReport } from "../metrics/contributor-types.js";
+import type { InsightProvider } from "../insight/provider.js";
+import type { RecapResult } from "../insight/types.js";
 
 /** Number of preceding windows fetched to form the trend/anomaly baseline. */
 export const DEFAULT_BASELINE_WINDOWS = 3;
@@ -103,4 +110,35 @@ export async function getReviewHealthTrend(
     };
   });
   return { repo, window, buckets, series };
+}
+
+/**
+ * Builds contributor character sheets + badges for a window (deterministic; no
+ * LLM). Reuses the cached activity snapshot — no extra upstream calls.
+ */
+export async function getContributors(repo: RepoRef, window: Window, log: Log): Promise<ContributorReport> {
+  const activity = await getActivity(repo, window, log);
+  const stats = computeContributors(activity);
+  const { sheets, badgeCounts } = buildCharacterSheets(stats);
+  return { repo, window, sheets, badgeCounts, generatedAt: new Date().toISOString() };
+}
+
+/**
+ * Builds the grounded "Repo Wrapped" recap: computes a no-baseline report +
+ * contributors + trend from the cached activity, assembles the recap fact ledger,
+ * and hands it to the (verified-grounded) recap generator.
+ */
+export async function getRecap(
+  repo: RepoRef,
+  window: Window,
+  provider: InsightProvider,
+  log: Log,
+): Promise<RecapResult> {
+  const activity = await getActivity(repo, window, log);
+  const report = buildReport(computeWindowMetrics(activity), []);
+  const stats = computeContributors(activity);
+  const { badgeCounts } = buildCharacterSheets(stats);
+  const trend = await getReviewHealthTrend(repo, window, DEFAULT_TREND_BUCKETS, log);
+  const facts = buildRecapFacts(report, stats, trend, badgeCounts);
+  return generateRecap(repo, window, facts, provider);
 }
