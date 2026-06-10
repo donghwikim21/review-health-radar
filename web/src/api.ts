@@ -1,4 +1,11 @@
-import type { ApiError, NarrativeResult, ReviewHealthReport, ReviewHealthTrend } from "./types";
+import type {
+  ApiError,
+  ContributorReport,
+  NarrativeResult,
+  RecapResult,
+  ReviewHealthReport,
+  ReviewHealthTrend,
+} from "./types";
 
 export interface Query {
   owner: string;
@@ -41,5 +48,18 @@ export function fetchNarrative(q: Query): Promise<NarrativeResult> {
 export function fetchTrend(q: Query, buckets = 8): Promise<ReviewHealthTrend> {
   return call<ReviewHealthTrend>(
     `/repos/${encodeURIComponent(q.owner)}/${encodeURIComponent(q.repo)}/review-health/trend?${qs(q)}&buckets=${buckets}`,
+  );
+}
+
+export function fetchContributors(q: Query): Promise<ContributorReport> {
+  return call<ContributorReport>(
+    `/repos/${encodeURIComponent(q.owner)}/${encodeURIComponent(q.repo)}/contributors?${qs(q)}`,
+  );
+}
+
+export function fetchRecap(q: Query): Promise<RecapResult> {
+  return call<RecapResult>(
+    `/repos/${encodeURIComponent(q.owner)}/${encodeURIComponent(q.repo)}/recap?${qs(q)}`,
+    { method: "POST" },
   );
 }

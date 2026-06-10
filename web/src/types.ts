@@ -87,6 +87,75 @@ export interface ReviewHealthTrend {
   series: TrendPoint[];
 }
 
+export interface Attributes {
+  velocity: number;
+  collaboration: number;
+  responsiveness: number;
+  breadth: number;
+  thoroughness: number;
+}
+
+export interface Badge {
+  id: string;
+  label: string;
+  emoji: string;
+  description: string;
+  warning?: boolean;
+}
+
+export interface ContributorStats {
+  login: string;
+  prsAuthored: number;
+  prsMerged: number;
+  linesChanged: number;
+  reviewsGiven: number;
+  reviewCommentsGiven: number;
+  authorsReviewed: number;
+  medianResponsivenessHours: number | null;
+  soleReviewerCount: number;
+  totalCommits: number;
+  nightCommits: number;
+  earlyCommits: number;
+}
+
+export interface CharacterSheet {
+  login: string;
+  archetype: string;
+  attributes: Attributes;
+  badges: Badge[];
+  stats: ContributorStats;
+}
+
+export interface ContributorReport {
+  repo: { owner: string; name: string };
+  window: { since: string; until: string };
+  sheets: CharacterSheet[];
+  badgeCounts: Record<string, number>;
+  generatedAt: string;
+}
+
+export interface RecapEvidence {
+  factId: string;
+  label: string;
+  display: string;
+}
+
+export interface RecapResult {
+  title: string;
+  highlights: { text: string; evidence: RecapEvidence[] }[];
+  mvp: { login: string; reason: string; evidence: RecapEvidence[] } | null;
+  meta: { model: string; regenerations: number; cached: boolean; generatedAt: string };
+}
+
+/** The radar axes in display order. */
+export const ATTRIBUTE_AXES: { key: keyof Attributes; label: string }[] = [
+  { key: "velocity", label: "Velocity" },
+  { key: "collaboration", label: "Collaboration" },
+  { key: "responsiveness", label: "Responsiveness" },
+  { key: "breadth", label: "Breadth" },
+  { key: "thoroughness", label: "Thoroughness" },
+];
+
 export interface ApiError {
   error: { code: string; message: string };
 }
