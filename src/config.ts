@@ -14,6 +14,10 @@ const EnvSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   INSIGHT_MODEL: z.string().min(1).default("claude-sonnet-4-6"),
   CACHE_TTL_SECONDS: z.coerce.number().int().nonnegative().default(3600),
+  VERIFY_NARRATIVE: z
+    .enum(["true", "false"])
+    .default("true")
+    .transform((v) => v === "true"),
   DATABASE_PATH: z.string().min(1).default("./data/review-health.db"),
   MAX_WINDOW_DAYS: z.coerce.number().int().positive().default(180),
   LOG_LEVEL: z
@@ -27,6 +31,7 @@ export type AppConfig = {
   port: number;
   insightModel: string;
   cacheTtlSeconds: number;
+  verifyNarrative: boolean;
   databasePath: string;
   maxWindowDays: number;
   logLevel: z.infer<typeof EnvSchema>["LOG_LEVEL"];
@@ -48,6 +53,7 @@ function load(): AppConfig {
     port: env.PORT,
     insightModel: env.INSIGHT_MODEL,
     cacheTtlSeconds: env.CACHE_TTL_SECONDS,
+    verifyNarrative: env.VERIFY_NARRATIVE,
     databasePath: env.DATABASE_PATH,
     maxWindowDays: env.MAX_WINDOW_DAYS,
     logLevel: env.LOG_LEVEL,

@@ -1,6 +1,6 @@
 import { buildUserPrompt } from "./prompt.js";
-import type { RawNarrative } from "./schema.js";
-import type { InsightProvider, NarrativeInput } from "./provider.js";
+import type { RawNarrative, Verdict } from "./schema.js";
+import type { InsightProvider, NarrativeInput, VerificationInput } from "./provider.js";
 
 /**
  * Deterministic provider used by tests and the offline eval suite. It does no
@@ -44,5 +44,28 @@ export class StubInsightProvider implements InsightProvider {
       ],
     };
     return narrative;
+  }
+
+  /**
+   * Deterministic skeptic: a hypothesis that rests on a reliable, genuinely
+   * anomalous fact is 'supported'; one resting only on non-anomalous or
+   * unreliable facts is 'weak'. Lets the verification + confidence path be
+   * regression-tested offline without a live model.
+   */
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async verify(input: VerificationInput): Promise<unknown> {
+    const byId = new Map(input.report.facts.map((f) => [f.id, f]));
+    const cited = input.citedFactIds.map((id) => byId.get(id)).filter((f) => f !== undefined);
+    const restsOnReliableAnomaly = cited.some(
+      (f) => f!.reliable && input.report.anomalies.includes(f!.id),
+    );
+    const verdict: Verdict = restsOnReliableAnomaly
+      ? { verdict: "supported", rationale: "Hypothesis rests on a reliable, statistically anomalous signal.", refutingEvidence: [] }
+      : {
+          verdict: "weak",
+          rationale: "Hypothesis does not rest on a statistically anomalous, reliable signal; could be noise or an innocent explanation.",
+          refutingEvidence: [],
+        };
+    return verdict;
   }
 }

@@ -8,11 +8,23 @@ import type { Fact, HealthBand } from "../metrics/types.js";
  * causal story, and `overall` combines them by a fixed, documented rule so the
  * narrative can never sound more certain than the data supports.
  */
+export type Verdict = "supported" | "weak" | "refuted";
+
 export interface Confidence {
   overall: number;
   statistical: number;
   reasoning: number;
+  /** The adversarial verdict and the multiplier it applied (null if verification was off/failed). */
+  verification: { verdict: Verdict; multiplier: number } | null;
   method: string;
+}
+
+/** Output of the adversarial skeptic pass. */
+export interface Verification {
+  verdict: Verdict;
+  rationale: string;
+  /** Ledger facts the skeptic says undercut the hypothesis (grounded; may be empty). */
+  refutingEvidence: EnrichedEvidence[];
 }
 
 /** An evidence item, enriched from the ledger so the value shown is authoritative. */
@@ -38,6 +50,8 @@ export interface NarrativeResult {
     evidence: EnrichedEvidence[];
   };
   caveats: string[];
+  /** The adversarial skeptic's verdict over the hypothesis (null if verification disabled). */
+  verification: Verification | null;
   /** The full ledger, so a reader can audit every number the narrative leans on. */
   facts: Fact[];
   meta: {

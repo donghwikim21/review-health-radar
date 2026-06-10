@@ -77,4 +77,16 @@ describe("computeConfidence", () => {
     expect(c.statistical).toBeLessThanOrEqual(0.3);
     expect(c.overall).toBeLessThanOrEqual(0.3);
   });
+
+  it("applies the adversarial verdict as a multiplier on overall", () => {
+    const f = [fact({ id: "review_coverage", sampleSize: 30 })];
+    const n = narrative(["review_coverage"], 1); // base overall == statistical == 1.0
+    const verdict = (v: "supported" | "weak" | "refuted") => ({ verdict: v, rationale: "r", refutingEvidence: [] });
+
+    expect(computeConfidence(n, f, verdict("supported")).overall).toBe(1);
+    expect(computeConfidence(n, f, verdict("weak")).overall).toBe(0.6);
+    expect(computeConfidence(n, f, verdict("refuted")).overall).toBe(0.25);
+    expect(computeConfidence(n, f, null).verification).toBeNull();
+    expect(computeConfidence(n, f, verdict("weak")).verification).toEqual({ verdict: "weak", multiplier: 0.6 });
+  });
 });

@@ -25,6 +25,45 @@ export const RawNarrativeSchema = z.object({
 export type EvidenceItem = z.infer<typeof EvidenceItemSchema>;
 export type RawNarrative = z.infer<typeof RawNarrativeSchema>;
 
+/**
+ * The skeptic's verdict in the adversarial verification pass. A second LLM call
+ * tries to *refute* the hypothesis; this is what it returns. `refutingEvidence`
+ * cites ledger fact ids that undercut the hypothesis (may be empty when supported).
+ */
+export const VerdictSchema = z.object({
+  verdict: z.enum(["supported", "weak", "refuted"]),
+  rationale: z.string().min(1).max(2000),
+  refutingEvidence: z.array(EvidenceItemSchema).max(6),
+});
+
+export type Verdict = z.infer<typeof VerdictSchema>;
+
+export const VERDICT_TOOL_SCHEMA = {
+  type: "object" as const,
+  properties: {
+    verdict: {
+      type: "string",
+      enum: ["supported", "weak", "refuted"],
+      description:
+        "'supported' = the cited facts genuinely back the causal claim; 'weak' = plausible but with real confounds or thin evidence; 'refuted' = the data contradicts it or an innocent explanation is more likely.",
+    },
+    rationale: { type: "string", maxLength: 2000, description: "Concise (2-4 sentences): why you reached this verdict — name the strongest confound or contradiction." },
+    refutingEvidence: {
+      type: "array",
+      description: "Fact ids (from the ledger) that undercut or contradict the hypothesis. Empty if none.",
+      items: {
+        type: "object",
+        properties: {
+          factId: { type: "string", description: "An id from the fact ledger. Must match exactly." },
+          relevance: { type: "string", description: "How this fact weakens the hypothesis." },
+        },
+        required: ["factId", "relevance"],
+      },
+    },
+  },
+  required: ["verdict", "rationale", "refutingEvidence"],
+} as const;
+
 /** JSON Schema handed to Claude as the tool input schema (kept in sync with the Zod schema above). */
 export const NARRATIVE_TOOL_SCHEMA = {
   type: "object" as const,

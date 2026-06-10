@@ -1,12 +1,14 @@
 import { createHash } from "node:crypto";
 import type { ZodError } from "zod";
 import { AppError } from "../errors.js";
+import { config } from "../config.js";
 import type { ReviewHealthReport } from "../metrics/types.js";
 import { getCachedNarrative, narrativeKey, putCachedNarrative } from "../store/repository.js";
 import { computeConfidence } from "./confidence.js";
 import { groundingFeedback, validateGrounding } from "./validator.js";
+import { verifyHypothesis } from "./verification.js";
 import type { InsightProvider } from "./provider.js";
-import type { EnrichedEvidence, NarrativeResult } from "./types.js";
+import type { EnrichedEvidence, NarrativeResult, Verification } from "./types.js";
 import { RawNarrativeSchema, type RawNarrative } from "./schema.js";
 
 /** Max attempts to coax a valid, grounded answer before failing closed. */
@@ -106,6 +108,12 @@ export async function generateNarrative(
     );
   }
 
+  // 3) Adversarial verification: a skeptic tries to refute the hypothesis; its
+  //    verdict scales the confidence. Best-effort (null on failure).
+  const verification: Verification | null = config.verifyNarrative
+    ? await verifyHypothesis(report, narrative, provider)
+    : null;
+
   const result: NarrativeResult = {
     repo: report.repo,
     window: report.window,
@@ -114,10 +122,11 @@ export async function generateNarrative(
     summary: narrative.summary,
     hypothesis: {
       statement: narrative.rootCauseHypothesis.statement,
-      confidence: computeConfidence(narrative, report.facts),
+      confidence: computeConfidence(narrative, report.facts, verification),
       evidence: enrichEvidence(narrative, report),
     },
     caveats: narrative.caveats,
+    verification,
     facts: report.facts,
     meta: {
       model: provider.model,

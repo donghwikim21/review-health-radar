@@ -1,5 +1,5 @@
 import type { Fact, ReviewHealthReport } from "../metrics/types.js";
-import type { NarrativeInput } from "./provider.js";
+import type { NarrativeInput, VerificationInput } from "./provider.js";
 
 export const SYSTEM_PROMPT = `You are a careful engineering-analytics assistant. You write a short, honest narrative over a set of pre-computed "Review Health" metrics for a software repository.
 
@@ -48,4 +48,24 @@ export function buildMessages(input: NarrativeInput): { system: string; user: st
     user += `\n\nIMPORTANT — your previous answer was rejected: ${input.feedback}\nOnly cite fact ids that appear in the ledger above.`;
   }
   return { system: SYSTEM_PROMPT, user };
+}
+
+export const VERIFICATION_SYSTEM_PROMPT = `You are a skeptical staff engineer doing a second-pass review of an automated hypothesis about a repository's review health. Your job is to try to REFUTE it, not to agree.
+
+Scrutinise:
+- Confounds and innocent explanations (release sprints, holidays, a few large refactors, bot PRs, tiny teams).
+- Whether the cited facts are reliable (sufficient sample size) and whether any trend actually contradicts the claim (e.g. a metric the hypothesis calls "bad" is in fact improving vs. baseline).
+- Over-reach: a causal story asserted from a value that merely crossed a threshold by a hair or has a near-zero z-score.
+
+Return a verdict: 'supported' only if the facts genuinely back the causal claim; 'weak' if plausible but confounded or thin; 'refuted' if the data contradicts it or an innocent explanation is clearly more likely. Keep the rationale concise (2-4 sentences). Cite ledger fact ids (exact) for anything you point to. Respond ONLY by calling the submit_verdict tool.`;
+
+export function buildVerificationMessages(input: VerificationInput): { system: string; user: string } {
+  const user = `${buildUserPrompt(input.report)}
+
+A first-pass analysis produced this hypothesis:
+"${input.hypothesis}"
+It cited these fact ids: ${input.citedFactIds.join(", ") || "(none)"}.
+
+Try to refute it. Is the causal claim genuinely supported by the ledger, or is there a confound, contradiction, or innocent explanation?`;
+  return { system: VERIFICATION_SYSTEM_PROMPT, user };
 }

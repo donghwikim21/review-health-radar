@@ -9,6 +9,14 @@ export interface NarrativeInput {
   feedback?: string;
 }
 
+export interface VerificationInput {
+  report: ReviewHealthReport;
+  /** The hypothesis statement the skeptic must try to refute. */
+  hypothesis: string;
+  /** Fact ids the hypothesis cited, so the skeptic can scrutinise them. */
+  citedFactIds: string[];
+}
+
 /**
  * Abstraction over the LLM. Swapping Anthropic for another provider — or the
  * deterministic StubInsightProvider used in tests/evals — is just a different
@@ -24,4 +32,10 @@ export interface InsightProvider {
    * of failure.
    */
   generate(input: NarrativeInput): Promise<unknown>;
+  /**
+   * Adversarial pass: a skeptic that tries to refute the hypothesis and returns a
+   * raw verdict payload (validated by the caller). Same "return raw" contract as
+   * generate().
+   */
+  verify(input: VerificationInput): Promise<unknown>;
 }
