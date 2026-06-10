@@ -1,5 +1,4 @@
 import type { ReviewHealthReport } from "../metrics/types.js";
-import type { RawNarrative } from "./schema.js";
 
 export interface NarrativeInput {
   report: ReviewHealthReport;
@@ -18,5 +17,11 @@ export interface NarrativeInput {
  */
 export interface InsightProvider {
   readonly model: string;
-  generate(input: NarrativeInput): Promise<RawNarrative>;
+  /**
+   * Returns the model's raw structured payload (the tool-call input). It is
+   * intentionally NOT schema-validated here — the orchestrator validates schema
+   * AND grounding in one place so it can regenerate with feedback on either kind
+   * of failure.
+   */
+  generate(input: NarrativeInput): Promise<unknown>;
 }

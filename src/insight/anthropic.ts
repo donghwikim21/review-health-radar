@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { AppError } from "../errors.js";
 import { buildMessages } from "./prompt.js";
-import { NARRATIVE_TOOL_SCHEMA, RawNarrativeSchema, type RawNarrative } from "./schema.js";
+import { NARRATIVE_TOOL_SCHEMA } from "./schema.js";
 import type { InsightProvider, NarrativeInput } from "./provider.js";
 
 const TOOL_NAME = "submit_narrative";
@@ -19,7 +19,7 @@ export class AnthropicInsightProvider implements InsightProvider {
     this.model = model;
   }
 
-  async generate(input: NarrativeInput): Promise<RawNarrative> {
+  async generate(input: NarrativeInput): Promise<unknown> {
     const { system, user } = buildMessages(input);
     let response: Anthropic.Message;
     try {
@@ -47,13 +47,7 @@ export class AnthropicInsightProvider implements InsightProvider {
     if (!toolUse) {
       throw new AppError("INSIGHT_UNAVAILABLE", "The LLM did not return a structured narrative.");
     }
-
-    const parsed = RawNarrativeSchema.safeParse(toolUse.input);
-    if (!parsed.success) {
-      throw new AppError("INSIGHT_UNAVAILABLE", "The LLM returned a narrative that failed schema validation.", {
-        cause: parsed.error,
-      });
-    }
-    return parsed.data;
+    // Return raw; the orchestrator validates schema + grounding and can regenerate.
+    return toolUse.input;
   }
 }

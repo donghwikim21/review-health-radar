@@ -12,14 +12,14 @@ export const EvidenceItemSchema = z.object({
 });
 
 export const RawNarrativeSchema = z.object({
-  headline: z.string().min(1).max(140),
-  summary: z.string().min(1).max(1000),
+  headline: z.string().min(1).max(200),
+  summary: z.string().min(1).max(1500),
   rootCauseHypothesis: z.object({
-    statement: z.string().min(1).max(1000),
+    statement: z.string().min(1).max(1500),
     evidence: z.array(EvidenceItemSchema).min(1).max(8),
     reasoningConfidence: z.number().min(0).max(1),
   }),
-  caveats: z.array(z.string().min(1).max(400)).max(6),
+  caveats: z.array(z.string().min(1).max(500)).max(6),
 });
 
 export type EvidenceItem = z.infer<typeof EvidenceItemSchema>;
@@ -29,11 +29,12 @@ export type RawNarrative = z.infer<typeof RawNarrativeSchema>;
 export const NARRATIVE_TOOL_SCHEMA = {
   type: "object" as const,
   properties: {
-    headline: { type: "string", description: "A short (<140 char) title for the most notable thing in the data." },
+    headline: { type: "string", maxLength: 200, description: "A short (<=200 char) title for the most notable thing in the data." },
     summary: {
       type: "string",
+      maxLength: 1500,
       description:
-        "1-3 neutral sentences describing what stands out. Refer to signals qualitatively; do not invent numbers — the service renders authoritative values from the cited facts.",
+        "1-3 neutral sentences (<=1500 chars) describing what stands out. Refer to signals qualitatively; do not invent numbers — the service renders authoritative values from the cited facts.",
     },
     rootCauseHypothesis: {
       type: "object",

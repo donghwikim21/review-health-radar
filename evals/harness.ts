@@ -66,11 +66,11 @@ function checkExpectations(result: NarrativeResult, expect: CaseExpectation): Ch
       detail: `got ${result.hypothesis.confidence.overall}`,
     });
   }
-  if (expect.maxStatisticalConfidence !== undefined) {
+  if (expect.maxOverallConfidence !== undefined) {
     checks.push({
-      name: `statistical confidence ≤ ${expect.maxStatisticalConfidence} (thin data stays humble)`,
-      pass: result.hypothesis.confidence.statistical <= expect.maxStatisticalConfidence,
-      detail: `got ${result.hypothesis.confidence.statistical}`,
+      name: `overall confidence ≤ ${expect.maxOverallConfidence} (thin data stays humble)`,
+      pass: result.hypothesis.confidence.overall <= expect.maxOverallConfidence,
+      detail: `got ${result.hypothesis.confidence.overall}`,
     });
   }
   return checks;

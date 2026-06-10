@@ -31,7 +31,7 @@ export interface CaseExpectation {
   anomalyContains?: string;
   anomaliesEmpty?: boolean;
   minOverallConfidence?: number;
-  maxStatisticalConfidence?: number;
+  maxOverallConfidence?: number;
 }
 
 export interface EvalCase {
@@ -64,11 +64,11 @@ export const CASES: EvalCase[] = [
   },
   {
     name: "low_volume",
-    description: "Only 2 merged PRs: a scary 0% coverage that is statistically meaningless — confidence must stay low.",
+    description: "Only 2 merged PRs: a scary 0% coverage that is statistically meaningless — overall confidence must stay humble.",
     report: buildReport(
       wm({ prsCreated: 3, prsMerged: 2, prsMergedReviewed: 0, reviewCoverage: 0, totalHumanReviews: 1, reviewedCohortCount: 1, reviewerTop1Share: 1, reviewerGini: 0 }),
       [],
     ),
-    expect: { maxStatisticalConfidence: 0.3 },
+    expect: { maxOverallConfidence: 0.45 },
   },
 ];

@@ -13,7 +13,7 @@ export class StubInsightProvider implements InsightProvider {
   readonly model = "stub-deterministic";
 
   // eslint-disable-next-line @typescript-eslint/require-await
-  async generate(input: NarrativeInput): Promise<RawNarrative> {
+  async generate(input: NarrativeInput): Promise<unknown> {
     // Touch the prompt builder so the stub fails if prompting breaks too.
     void buildUserPrompt(input.report);
 
@@ -30,7 +30,7 @@ export class StubInsightProvider implements InsightProvider {
     const direction = notable.trend?.direction ?? "flat";
     const confidence = notable.trend?.zScore ? Math.min(0.8, Math.abs(notable.trend.zScore) / 5) : 0.4;
 
-    return {
+    const narrative: RawNarrative = {
       headline: `${notable.label} is ${notable.display} (${direction} vs. baseline)`,
       summary: `For ${input.report.repo.owner}/${input.report.repo.name}, the most notable review-health signal this window is ${notable.label.toLowerCase()}, currently ${notable.display}. The repository's computed health band is ${input.report.band}.`,
       rootCauseHypothesis: {
@@ -43,5 +43,6 @@ export class StubInsightProvider implements InsightProvider {
         "Short windows and small teams can produce swings with innocent explanations.",
       ],
     };
+    return narrative;
   }
 }

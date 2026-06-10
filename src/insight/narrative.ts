@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type { ZodError } from "zod";
 import { AppError } from "../errors.js";
 import type { ReviewHealthReport } from "../metrics/types.js";
 import { getCachedNarrative, narrativeKey, putCachedNarrative } from "../store/repository.js";
@@ -6,10 +7,19 @@ import { computeConfidence } from "./confidence.js";
 import { groundingFeedback, validateGrounding } from "./validator.js";
 import type { InsightProvider } from "./provider.js";
 import type { EnrichedEvidence, NarrativeResult } from "./types.js";
-import type { RawNarrative } from "./schema.js";
+import { RawNarrativeSchema, type RawNarrative } from "./schema.js";
 
-/** Max attempts to coax a fully-grounded answer before failing closed. */
-export const MAX_GROUNDING_ATTEMPTS = 3;
+/** Max attempts to coax a valid, grounded answer before failing closed. */
+export const MAX_NARRATIVE_ATTEMPTS = 3;
+
+/** Turns a Zod failure into terse, model-actionable feedback for a retry. */
+function schemaFeedback(error: ZodError): string {
+  const issues = error.issues
+    .slice(0, 4)
+    .map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`)
+    .join("; ");
+  return `Your previous answer did not match the required schema (${issues}). Fix those fields and resubmit.`;
+}
 
 /** Stable hash of the ledger so a cached narrative always matches its numbers. */
 function ledgerHash(report: ReviewHealthReport): string {
@@ -66,21 +76,33 @@ export async function generateNarrative(
   let regenerations = 0;
   let narrative: RawNarrative | null = null;
 
-  for (let attempt = 0; attempt < MAX_GROUNDING_ATTEMPTS; attempt++) {
-    const candidate = await provider.generate({ report, feedback });
-    const grounding = validateGrounding(candidate, report.facts);
-    if (grounding.valid) {
-      narrative = candidate;
-      break;
+  for (let attempt = 0; attempt < MAX_NARRATIVE_ATTEMPTS; attempt++) {
+    const raw = await provider.generate({ report, feedback });
+
+    // 1) Schema: the model must return our exact structure.
+    const parsed = RawNarrativeSchema.safeParse(raw);
+    if (!parsed.success) {
+      regenerations++;
+      feedback = schemaFeedback(parsed.error);
+      continue;
     }
-    regenerations++;
-    feedback = groundingFeedback(grounding, report.facts);
+
+    // 2) Grounding: every cited fact id must exist in the ledger.
+    const grounding = validateGrounding(parsed.data, report.facts);
+    if (!grounding.valid) {
+      regenerations++;
+      feedback = groundingFeedback(grounding, report.facts);
+      continue;
+    }
+
+    narrative = parsed.data;
+    break;
   }
 
   if (!narrative) {
     throw new AppError(
       "INSIGHT_UNGROUNDED",
-      `The model kept citing facts outside the ledger after ${MAX_GROUNDING_ATTEMPTS} attempts.`,
+      `The model could not produce a valid, grounded narrative after ${MAX_NARRATIVE_ATTEMPTS} attempts.`,
     );
   }
 
