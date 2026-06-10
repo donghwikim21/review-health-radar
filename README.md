@@ -62,6 +62,10 @@ The hard requirement isn't "summarize JSON" — it's a narrative you can *trust*
 3. **Adversarial verification (the "skeptic").** After the narrative is grounded, a *second* LLM pass — a skeptic prompted to **refute** the hypothesis — returns a verdict (`supported` / `weak` / `refuted`) plus grounded refuting facts. Confidence is *earned through challenge*, not self-reported.
 4. **Decomposed confidence.** `overall = statistical × (0.5 + 0.5 × reasoning) × verdict` — the statistical part is computed in code from sample size + reliability of the cited facts; the reasoning part is the model's; the verdict multiplier (`supported 1.0 / weak 0.6 / refuted 0.25`) comes from the skeptic. Overall is capped by statistical, so the prose can never sound more certain than the data — or the skeptic — allows. (Toggle with `VERIFY_NARRATIVE`.)
 
+## Contributor character sheets (gamification, with a point of view)
+
+The flip side of "leaderboards lie": `GET /contributors` builds a **character sheet** per contributor — multidimensional **attributes** (Velocity, Collaboration, Responsiveness, Breadth, Thoroughness; a radar, not a rank), a rule-based **archetype** (Mentor / Sprinter / Guardian / Connector / Responder), and **behaviour badges** that reward *invisible collaborative labor* (Good Neighbor, Unblocker, Connector, Night Owl) plus a **warning** badge (Lone Guardian — bus-factor risk). **By design there is no single XP/level** — that would just recreate the farmable metric the rest of the project argues against. `POST /recap` produces a playful "Repo Wrapped" that reuses the grounding spine: every line cites a real ledger fact. See the **Contributors** tab in the UI for radars + badges.
+
 ## Eval harness
 
 ```bash
@@ -87,6 +91,8 @@ npm run typecheck
 | `GET` | `/repos/:owner/:repo/review-health?since&until[&baseline]` | metrics + fact ledger + anomalies |
 | `GET` | `/repos/:owner/:repo/review-health/trend?since&until[&buckets]` | per-signal time series (sparklines / trend lines) |
 | `POST` | `/repos/:owner/:repo/review-health/narrative?since&until` | grounded, adversarially-verified LLM narrative |
+| `GET` | `/repos/:owner/:repo/contributors?since&until` | contributor character sheets (attributes + badges) |
+| `POST` | `/repos/:owner/:repo/recap?since&until` | grounded "Repo Wrapped" season recap |
 
 Sensible status codes: `400` bad params · `422` window > `MAX_WINDOW_DAYS` · `404` repo not found · `429` upstream rate-limited (with `Retry-After`) · `502` upstream/grounding failure · `503` narrative key not configured.
 
