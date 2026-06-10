@@ -73,6 +73,24 @@ function checkExpectations(result: NarrativeResult, expect: CaseExpectation): Ch
       detail: `got ${result.hypothesis.confidence.overall}`,
     });
   }
+  if (expect.expectVerdict) {
+    const verdict = result.verification?.verdict;
+    checks.push({
+      name: `skeptic verdict ∈ {${expect.expectVerdict.join(", ")}}`,
+      pass: verdict !== undefined && expect.expectVerdict.includes(verdict),
+      detail: `got ${verdict ?? "none"}`,
+    });
+    // A non-supportive verdict must actually pull overall below the pre-verdict base.
+    if (verdict === "weak" || verdict === "refuted") {
+      const c = result.hypothesis.confidence;
+      const base = c.statistical * (0.5 + 0.5 * c.reasoning);
+      checks.push({
+        name: "non-supportive verdict lowered overall vs. base",
+        pass: c.overall < base - 1e-9,
+        detail: `overall ${c.overall} < base ${base.toFixed(3)}`,
+      });
+    }
+  }
   return checks;
 }
 
@@ -83,6 +101,7 @@ function snapshotOf(result: NarrativeResult) {
     statement: result.hypothesis.statement,
     evidence: result.hypothesis.evidence.map((e) => ({ factId: e.factId, display: e.display, isAnomaly: e.isAnomaly })),
     confidence: result.hypothesis.confidence,
+    verdict: result.verification?.verdict ?? null,
     band: result.band,
   };
 }

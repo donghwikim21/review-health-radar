@@ -1,5 +1,6 @@
 import { buildReport } from "../src/metrics/ledger.js";
 import type { ReviewHealthReport, WindowMetrics } from "../src/metrics/types.js";
+import type { Verdict } from "../src/insight/types.js";
 
 const repo = { owner: "acme", name: "widgets" };
 const window = { since: "2026-05-01T00:00:00Z", until: "2026-06-01T00:00:00Z" };
@@ -17,6 +18,7 @@ function wm(over: Partial<WindowMetrics> = {}): WindowMetrics {
     reviewCoverage: 0.95,
     rubberStampRate: 0.05,
     medianTimeToFirstReviewHours: 5,
+    medianTimeToMergeHours: 20,
     reviewerTop1Share: 0.3,
     reviewerGini: 0.2,
     totalHumanReviews: 50,
@@ -32,6 +34,8 @@ export interface CaseExpectation {
   anomaliesEmpty?: boolean;
   minOverallConfidence?: number;
   maxOverallConfidence?: number;
+  /** Expected adversarial verdict(s). Holds for both the stub and (in --live) the real skeptic. */
+  expectVerdict?: Verdict[];
 }
 
 export interface EvalCase {
@@ -50,7 +54,17 @@ export const CASES: EvalCase[] = [
       wm({ reviewCoverage: 0.94 }),
       wm({ reviewCoverage: 0.96 }),
     ]),
-    expect: { band: "at-risk", anomalyContains: "review_coverage", minOverallConfidence: 0.5 },
+    expect: { band: "at-risk", anomalyContains: "review_coverage", minOverallConfidence: 0.5, expectVerdict: ["supported"] },
+  },
+  {
+    name: "weak_signal",
+    description: "A marginal, non-anomalous reviewer-share bump (z≈1.2) — the skeptic should not endorse a causal story.",
+    report: buildReport(wm({ reviewCoverage: 0.93, reviewerTop1Share: 0.55 }), [
+      wm({ reviewCoverage: 0.93, reviewerTop1Share: 0.45 }),
+      wm({ reviewCoverage: 0.93, reviewerTop1Share: 0.55 }),
+      wm({ reviewCoverage: 0.93, reviewerTop1Share: 0.5 }),
+    ]),
+    expect: { anomaliesEmpty: true, expectVerdict: ["weak", "refuted"] },
   },
   {
     name: "healthy_steady",
