@@ -1,0 +1,14 @@
+node_modules
+web/node_modules
+dist
+web/dist
+.git
+.env
+.env.local
+data
+*.db
+*.db-shm
+*.db-wal
+*.log
+.DS_Store
+evals/snapshots
