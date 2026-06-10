@@ -1,6 +1,6 @@
 import { buildUserPrompt } from "./prompt.js";
-import type { RawNarrative, Verdict } from "./schema.js";
-import type { InsightProvider, NarrativeInput, VerificationInput } from "./provider.js";
+import type { RawNarrative, Recap, Verdict } from "./schema.js";
+import type { InsightProvider, NarrativeInput, RecapInput, VerificationInput } from "./provider.js";
 
 /**
  * Deterministic provider used by tests and the offline eval suite. It does no
@@ -67,5 +67,20 @@ export class StubInsightProvider implements InsightProvider {
           refutingEvidence: [],
         };
     return verdict;
+  }
+
+  /** Deterministic grounded recap: cites the first few real fact ids. */
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async recap(input: RecapInput): Promise<unknown> {
+    const facts = input.facts;
+    const highlights = facts.slice(0, 3).map((f) => ({ text: `${f.label}: ${f.display}.`, evidence: [f.id] }));
+    const mvpFact = facts.find((f) => f.id === "recap.top_reviewer") ?? facts.find((f) => f.id === "recap.top_author");
+    const mvpLogin = mvpFact ? mvpFact.label.split(": ")[1] ?? "unknown" : null;
+    const recap: Recap = {
+      title: "Repo Wrapped (stub)",
+      highlights: highlights.length > 0 ? highlights : [{ text: "A quiet window.", evidence: [facts[0]?.id ?? "recap.prs_merged"] }],
+      mvp: mvpFact && mvpLogin ? { login: mvpLogin, reason: `Led on ${mvpFact.label.toLowerCase()}.`, evidence: [mvpFact.id] } : null,
+    };
+    return recap;
   }
 }

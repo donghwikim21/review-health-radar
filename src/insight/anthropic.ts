@@ -1,11 +1,12 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { AppError } from "../errors.js";
-import { buildMessages, buildVerificationMessages } from "./prompt.js";
-import { NARRATIVE_TOOL_SCHEMA, VERDICT_TOOL_SCHEMA } from "./schema.js";
-import type { InsightProvider, NarrativeInput, VerificationInput } from "./provider.js";
+import { buildMessages, buildRecapMessages, buildVerificationMessages } from "./prompt.js";
+import { NARRATIVE_TOOL_SCHEMA, RECAP_TOOL_SCHEMA, VERDICT_TOOL_SCHEMA } from "./schema.js";
+import type { InsightProvider, NarrativeInput, RecapInput, VerificationInput } from "./provider.js";
 
 const TOOL_NAME = "submit_narrative";
 const VERDICT_TOOL_NAME = "submit_verdict";
+const RECAP_TOOL_NAME = "submit_recap";
 
 /**
  * Claude-backed provider. We force a single tool call so the model must return
@@ -28,6 +29,11 @@ export class AnthropicInsightProvider implements InsightProvider {
   async verify(input: VerificationInput): Promise<unknown> {
     const { system, user } = buildVerificationMessages(input);
     return this.toolCall(system, user, VERDICT_TOOL_NAME, VERDICT_TOOL_SCHEMA, "verdict");
+  }
+
+  async recap(input: RecapInput): Promise<unknown> {
+    const { system, user } = buildRecapMessages(input);
+    return this.toolCall(system, user, RECAP_TOOL_NAME, RECAP_TOOL_SCHEMA, "recap");
   }
 
   /**

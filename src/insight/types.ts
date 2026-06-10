@@ -27,6 +27,23 @@ export interface Verification {
   refutingEvidence: EnrichedEvidence[];
 }
 
+/** A cited recap fact, enriched with its authoritative label + value. */
+export interface RecapEvidence {
+  factId: string;
+  label: string;
+  display: string;
+}
+
+export interface RecapResult {
+  repo: RepoRef;
+  window: Window;
+  title: string;
+  highlights: { text: string; evidence: RecapEvidence[] }[];
+  mvp: { login: string; reason: string; evidence: RecapEvidence[] } | null;
+  facts: Fact[];
+  meta: { model: string; regenerations: number; cached: boolean; generatedAt: string };
+}
+
 /** An evidence item, enriched from the ledger so the value shown is authoritative. */
 export interface EnrichedEvidence {
   factId: string;

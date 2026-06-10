@@ -1,4 +1,4 @@
-import type { ReviewHealthReport } from "../metrics/types.js";
+import type { Fact, ReviewHealthReport } from "../metrics/types.js";
 
 export interface NarrativeInput {
   report: ReviewHealthReport;
@@ -15,6 +15,12 @@ export interface VerificationInput {
   hypothesis: string;
   /** Fact ids the hypothesis cited, so the skeptic can scrutinise them. */
   citedFactIds: string[];
+}
+
+export interface RecapInput {
+  /** The recap fact ledger — the only numbers/names the recap may cite. */
+  facts: Fact[];
+  feedback?: string;
 }
 
 /**
@@ -38,4 +44,6 @@ export interface InsightProvider {
    * generate().
    */
   verify(input: VerificationInput): Promise<unknown>;
+  /** Season "Repo Wrapped" recap; returns a raw payload validated by the caller. */
+  recap(input: RecapInput): Promise<unknown>;
 }

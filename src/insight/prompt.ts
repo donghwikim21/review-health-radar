@@ -1,5 +1,5 @@
 import type { Fact, ReviewHealthReport } from "../metrics/types.js";
-import type { NarrativeInput, VerificationInput } from "./provider.js";
+import type { NarrativeInput, RecapInput, VerificationInput } from "./provider.js";
 
 export const SYSTEM_PROMPT = `You are a careful engineering-analytics assistant. You write a short, honest narrative over a set of pre-computed "Review Health" metrics for a software repository.
 
@@ -58,6 +58,15 @@ Scrutinise:
 - Over-reach: a causal story asserted from a value that merely crossed a threshold by a hair or has a near-zero z-score.
 
 Return a verdict: 'supported' only if the facts genuinely back the causal claim; 'weak' if plausible but confounded or thin; 'refuted' if the data contradicts it or an innocent explanation is clearly more likely. Keep the rationale concise (2-4 sentences). Cite ledger fact ids (exact) for anything you point to. Respond ONLY by calling the submit_verdict tool.`;
+
+export const RECAP_SYSTEM_PROMPT = `You write a short, playful "Repo Wrapped" season recap for a software repository — fun in tone, but strictly accurate. You may ONLY reference the provided recap facts, and you cite them by their exact id. Never invent numbers or names: person facts put the login in their label, so name an MVP only from a fact you cite. Produce a title, 3–5 highlights, and an MVP (or null). Respond ONLY by calling the submit_recap tool.`;
+
+export function buildRecapMessages(input: RecapInput): { system: string; user: string } {
+  const ledger = input.facts.map((f) => `- id=${f.id}  ${f.label} → ${f.display}`).join("\n");
+  let user = `Recap fact ledger (the ONLY facts you may cite, by id):\n${ledger}\n\nWrite the recap. Keep it upbeat but cite a fact id for every claim.`;
+  if (input.feedback) user += `\n\nIMPORTANT — your previous answer was rejected: ${input.feedback}`;
+  return { system: RECAP_SYSTEM_PROMPT, user };
+}
 
 export function buildVerificationMessages(input: VerificationInput): { system: string; user: string } {
   const user = `${buildUserPrompt(input.report)}

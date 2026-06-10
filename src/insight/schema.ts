@@ -64,6 +64,49 @@ export const VERDICT_TOOL_SCHEMA = {
   required: ["verdict", "rationale", "refutingEvidence"],
 } as const;
 
+/**
+ * The "Repo Wrapped" season recap. A playful narrative, but every claim cites
+ * recap-ledger fact ids (validated) — so it can't invent numbers or name the wrong
+ * person. `evidence` is a list of fact ids.
+ */
+export const RecapSchema = z.object({
+  title: z.string().min(1).max(120),
+  highlights: z
+    .array(z.object({ text: z.string().min(1).max(600), evidence: z.array(z.string().min(1)).min(1).max(4) }))
+    .min(1)
+    .max(6),
+  mvp: z
+    .object({ login: z.string().min(1).max(80), reason: z.string().min(1).max(500), evidence: z.array(z.string().min(1)).min(1).max(4) })
+    .nullable(),
+});
+
+export type Recap = z.infer<typeof RecapSchema>;
+
+const RECAP_EVIDENCE = { type: "array", description: "Fact ids from the recap ledger that back this claim.", items: { type: "string" } };
+
+export const RECAP_TOOL_SCHEMA = {
+  type: "object" as const,
+  properties: {
+    title: { type: "string", maxLength: 120, description: "A short, fun title for the period's recap." },
+    highlights: {
+      type: "array",
+      description: "3–5 playful but accurate highlights. Each cites the fact ids it rests on.",
+      items: {
+        type: "object",
+        properties: { text: { type: "string", maxLength: 600 }, evidence: RECAP_EVIDENCE },
+        required: ["text", "evidence"],
+      },
+    },
+    mvp: {
+      type: ["object", "null"],
+      description: "An MVP for the period, or null. Use the login from a cited person-fact's label; don't guess names.",
+      properties: { login: { type: "string" }, reason: { type: "string", maxLength: 500 }, evidence: RECAP_EVIDENCE },
+      required: ["login", "reason", "evidence"],
+    },
+  },
+  required: ["title", "highlights", "mvp"],
+} as const;
+
 /** JSON Schema handed to Claude as the tool input schema (kept in sync with the Zod schema above). */
 export const NARRATIVE_TOOL_SCHEMA = {
   type: "object" as const,

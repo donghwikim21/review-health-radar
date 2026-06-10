@@ -10,6 +10,15 @@ export interface GroundingResult {
 }
 
 /**
+ * The single hallucination-proofing primitive: which of the cited fact ids do not
+ * exist in the ledger. Shared by the narrative grounding check and the recap.
+ */
+export function unknownFactIds(citedIds: string[], facts: Fact[]): string[] {
+  const known = new Set(facts.map((f) => f.id));
+  return citedIds.filter((id) => !known.has(id));
+}
+
+/**
  * The core safety check. A narrative is "grounded" only if every fact id it cites
  * exists in the ledger. Because the model is constrained to cite ids (not restate
  * numbers) and we render the authoritative value ourselves, passing this check
@@ -18,11 +27,11 @@ export interface GroundingResult {
 export function validateGrounding(narrative: RawNarrative, facts: Fact[]): GroundingResult {
   const byId = new Map(facts.map((f) => [f.id, f]));
   const cited = narrative.rootCauseHypothesis.evidence.map((e) => e.factId);
-  const unknownFactIds = cited.filter((id) => !byId.has(id));
+  const unknown = unknownFactIds(cited, facts);
   const citesReliableFact = cited.some((id) => byId.get(id)?.reliable === true);
   return {
-    valid: unknownFactIds.length === 0,
-    unknownFactIds,
+    valid: unknown.length === 0,
+    unknownFactIds: unknown,
     citesReliableFact,
   };
 }
