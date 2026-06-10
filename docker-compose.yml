@@ -1,0 +1,17 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      # Pin storage to the mounted volume regardless of what .env says.
+      DATABASE_PATH: /app/data/review-health.db
+      PORT: "3000"
+    volumes:
+      - data:/app/data
+    restart: unless-stopped
+
+volumes:
+  data:
