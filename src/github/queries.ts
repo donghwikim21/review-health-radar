@@ -6,25 +6,24 @@
  * can log how much budget each call actually consumed.
  */
 
+// We use the Search API with a server-side \`created:\` filter so we only ever fetch
+// PRs *in the window* — instead of paginating newest-first through months of
+// out-of-window PRs (which is slow and trips secondary rate limits on busy repos).
 export const PULL_REQUESTS_QUERY = /* GraphQL */ `
-  query PullRequests($owner: String!, $name: String!, $cursor: String) {
-    repository(owner: $owner, name: $name) {
-      pullRequests(
-        first: 50
-        after: $cursor
-        orderBy: { field: CREATED_AT, direction: DESC }
-        states: [OPEN, CLOSED, MERGED]
-      ) {
-        pageInfo {
-          hasNextPage
-          endCursor
-        }
-        nodes {
+  query PullRequests($q: String!, $cursor: String) {
+    search(query: $q, type: ISSUE, first: 50, after: $cursor) {
+      issueCount
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      nodes {
+        __typename
+        ... on PullRequest {
           number
           createdAt
           mergedAt
           closedAt
-          updatedAt
           authorAssociation
           author {
             login

@@ -25,30 +25,29 @@ interface RateLimit {
   remaining: number;
 }
 
-interface PrNode {
-  number: number;
-  createdAt: string;
-  mergedAt: string | null;
-  closedAt: string | null;
-  authorAssociation: string;
+interface ReviewNode {
+  state: ReviewState;
+  submittedAt: string | null;
   author: { login: string } | null;
-  reviews: {
-    totalCount: number;
-    nodes: Array<{
-      state: ReviewState;
-      submittedAt: string | null;
-      author: { login: string } | null;
-      comments: { totalCount: number };
-    }>;
-  };
+  comments: { totalCount: number };
+}
+
+interface PrNode {
+  __typename: string;
+  number?: number;
+  createdAt?: string;
+  mergedAt?: string | null;
+  closedAt?: string | null;
+  authorAssociation?: string;
+  author?: { login: string } | null;
+  reviews?: { totalCount: number; nodes: ReviewNode[] };
 }
 
 interface PrPageResponse {
-  repository: {
-    pullRequests: {
-      pageInfo: { hasNextPage: boolean; endCursor: string | null };
-      nodes: PrNode[];
-    } | null;
+  search: {
+    issueCount: number;
+    pageInfo: { hasNextPage: boolean; endCursor: string | null };
+    nodes: PrNode[];
   } | null;
   rateLimit: RateLimit;
 }
@@ -77,7 +76,7 @@ interface CommitPageResponse {
 
 // --- Normalisation ----------------------------------------------------------
 
-function normalizeReview(node: PrNode["reviews"]["nodes"][number]): Review {
+function normalizeReview(node: ReviewNode): Review {
   return {
     author: node.author?.login ?? null,
     state: node.state,
@@ -88,14 +87,14 @@ function normalizeReview(node: PrNode["reviews"]["nodes"][number]): Review {
 
 function normalizePr(node: PrNode): PullRequest {
   return {
-    number: node.number,
+    number: node.number ?? 0,
     author: node.author?.login ?? null,
-    authorAssociation: node.authorAssociation,
-    createdAt: node.createdAt,
-    mergedAt: node.mergedAt,
-    closedAt: node.closedAt,
-    reviews: node.reviews.nodes.map(normalizeReview),
-    reviewTotalCount: node.reviews.totalCount,
+    authorAssociation: node.authorAssociation ?? "NONE",
+    createdAt: node.createdAt!,
+    mergedAt: node.mergedAt ?? null,
+    closedAt: node.closedAt ?? null,
+    reviews: node.reviews?.nodes.map(normalizeReview) ?? [],
+    reviewTotalCount: node.reviews?.totalCount ?? 0,
   };
 }
 
@@ -149,8 +148,11 @@ export async function fetchRepoActivity(
   window: Window,
   log: Log = rootLogger,
 ): Promise<RepoActivity> {
-  const pullRequests = await fetchPullRequests(repo, window, log);
-  const commits = await fetchCommits(repo, window, log);
+  // PRs and commits are independent queries — fetch them concurrently.
+  const [pullRequests, commits] = await Promise.all([
+    fetchPullRequests(repo, window, log),
+    fetchCommits(repo, window, log),
+  ]);
   return {
     repo,
     window,
@@ -163,6 +165,12 @@ export async function fetchRepoActivity(
 async function fetchPullRequests(repo: RepoRef, window: Window, log: Log): Promise<PullRequest[]> {
   const sinceMs = Date.parse(window.since);
   const untilMs = Date.parse(window.until);
+  // Server-side narrow to the window via Search; the date range is day-granular
+  // and inclusive, so we still apply exact [since, until) bounds client-side.
+  const sinceDay = window.since.slice(0, 10);
+  const untilDay = window.until.slice(0, 10);
+  const q = `repo:${repo.owner}/${repo.name} is:pr created:${sinceDay}..${untilDay}`;
+
   const collected: PullRequest[] = [];
   let cursor: string | null = null;
   let totalCost = 0;
@@ -170,34 +178,24 @@ async function fetchPullRequests(repo: RepoRef, window: Window, log: Log): Promi
   for (let page = 0; page < MAX_PR_PAGES; page++) {
     let response: PrPageResponse;
     try {
-      response = await octokit.graphql<PrPageResponse>(PULL_REQUESTS_QUERY, {
-        owner: repo.owner,
-        name: repo.name,
-        cursor,
-      });
+      response = await octokit.graphql<PrPageResponse>(PULL_REQUESTS_QUERY, { q, cursor });
     } catch (error) {
       throw mapGithubError(error);
     }
 
     totalCost += response.rateLimit?.cost ?? 0;
-    const connection = response.repository?.pullRequests;
-    if (!connection) {
-      throw new AppError("NOT_FOUND", "Repository not found or has no pull requests.");
-    }
+    const search = response.search;
+    if (!search) break;
 
-    let reachedOlderThanWindow = false;
-    for (const node of connection.nodes) {
+    for (const node of search.nodes) {
+      if (!node.createdAt) continue; // non-PR node (defensive)
       const createdMs = Date.parse(node.createdAt);
-      if (createdMs >= untilMs) continue; // newer than the window — skip
-      if (createdMs < sinceMs) {
-        reachedOlderThanWindow = true; // descending order: everything after is older too
-        break;
-      }
+      if (createdMs < sinceMs || createdMs >= untilMs) continue; // exact half-open bounds
       collected.push(normalizePr(node));
     }
 
-    if (reachedOlderThanWindow || !connection.pageInfo.hasNextPage) break;
-    cursor = connection.pageInfo.endCursor;
+    if (!search.pageInfo.hasNextPage) break;
+    cursor = search.pageInfo.endCursor;
 
     if (page === MAX_PR_PAGES - 1) {
       log.warn({ repo, window, fetched: collected.length }, "Hit MAX_PR_PAGES cap; PR result may be truncated");

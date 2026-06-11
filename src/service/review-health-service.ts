@@ -53,10 +53,12 @@ export async function getReviewHealthReport(
   const baselineCount = options.baselineWindows ?? DEFAULT_BASELINE_WINDOWS;
   const baselineWindowDefs = precedingWindows(window, baselineCount);
 
-  const currentActivity = await getActivity(repo, window, log);
-  const baselineActivities = await Promise.all(
-    baselineWindowDefs.map((w) => getActivity(repo, w, log)),
-  );
+  // Fetch the current window and all baseline windows concurrently (each is
+  // independently cached), rather than waiting for the current one first.
+  const [currentActivity, ...baselineActivities] = await Promise.all([
+    getActivity(repo, window, log),
+    ...baselineWindowDefs.map((w) => getActivity(repo, w, log)),
+  ]);
 
   const currentMetrics = computeWindowMetrics(currentActivity);
   const baselineMetrics = baselineActivities.map(computeWindowMetrics);
